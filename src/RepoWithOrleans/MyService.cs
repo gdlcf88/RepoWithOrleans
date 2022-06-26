@@ -103,32 +103,32 @@ public class MyService : ITransientDependency
             await uow.CompleteAsync();
         }
 
-        // using (var uow = _unitOfWorkManager.Begin(isTransactional: true))
-        // {
-        //     Console.WriteLine($"Start to increase Sold of Book1");
-        //     var book1 = await _bookRepository.GetAsync(Consts.Book1Id);
-        //     Console.WriteLine($"Original Book1 sold is: {book1.Sold}");
-        //     book1.IncreaseSold(2);
-        //     await _bookRepository.UpdateAsync(book1, true);
-        //
-        //     var task = Task.Run(async () =>
-        //     {
-        //         Console.WriteLine($"As it happens, someone else try to get Book1 cache before the commit");
-        //         var book1Cache = await _cachedBookProvider.GetAsync(Consts.Book1Id);
-        //         Console.WriteLine($"Got Book1 cache, the sold is: {book1Cache.Entity.Sold}");
-        //     });
-        //     
-        //     Console.WriteLine($"Commit in 3s");
-        //     await Task.Delay(TimeSpan.FromSeconds(1));
-        //     Console.WriteLine($"Commit in 2s");
-        //     await Task.Delay(TimeSpan.FromSeconds(1));
-        //     Console.WriteLine($"Commit in 1s");
-        //     await Task.Delay(TimeSpan.FromSeconds(1));
-        //     await uow.CompleteAsync();
-        //     Console.WriteLine($"Increase 2, the new Book1 sold is: {book1.Sold}");
-        //
-        //     task.Wait();
-        // }
+        using (var uow = _unitOfWorkManager.Begin(isTransactional: true))
+        {
+            Console.WriteLine($"Start to increase Sold of Book1");
+            var book1 = await _bookRepository.GetAsync(Consts.Book1Id);
+            Console.WriteLine($"Original Book1 sold is: {book1.Sold}");
+            book1.IncreaseSold(2);
+            await _bookRepository.UpdateAsync(book1, true);
+        
+            var task = Task.Run(async () =>
+            {
+                Console.WriteLine($"As it happens, someone else try to get Book1 cache before the commit");
+                var book1Cache = await _cachedBookProvider.GetAsync(Consts.Book1Id);
+                Console.WriteLine($"Got Book1 cache, the sold is: {book1Cache.Entity.Sold}");
+            });
+            
+            Console.WriteLine($"Commit in 3s");
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            Console.WriteLine($"Commit in 2s");
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            Console.WriteLine($"Commit in 1s");
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            await uow.CompleteAsync();
+            Console.WriteLine($"Increase 2, the new Book1 sold is: {book1.Sold}");
+        
+            task.Wait();
+        }
         
         var book11 = await _bookRepository.GetAsync(Consts.Book1Id);
         Console.WriteLine($"!!!Got Book1, the ConcurrencyStamp is: {book11.ConcurrencyStamp}");
