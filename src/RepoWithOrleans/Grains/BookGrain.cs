@@ -35,16 +35,20 @@ public class BookGrain : Grain, IBookGrain
     {
         using var scope = ServiceProvider.CreateScope();
 
+        var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+
+        using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
+        
         var bookRepository = scope.ServiceProvider.GetRequiredService<IBookRepository>();
 
-        Entity = await bookRepository.FindAsync(this.GetPrimaryKey());
+        Entity = await bookRepository.FindFromDatabaseAsync(this.GetPrimaryKey());
     }
 
     public async Task<Book> GetEntityOrNullAsync()
     {
         var currentStamp = await CurrentStampGrain.GetCurrentStampAsync();
 
-        if (currentStamp is not null && !await TryUpdateStampAsync())
+        if (currentStamp is not null && !await TryEmptyUpdateAsync())
         {
             throw new EntityIsChangingException();
         }
@@ -52,19 +56,19 @@ public class BookGrain : Grain, IBookGrain
         return Entity;
     }
 
-    protected async Task<bool> TryUpdateStampAsync()
+    protected async Task<bool> TryEmptyUpdateAsync()
     {
         using var scope = ServiceProvider.CreateScope();
 
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-
-        using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-
+        
         try
         {
+            using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
+
             var bookRepository = scope.ServiceProvider.GetRequiredService<IBookRepository>();
 
-            var entity = await bookRepository.GetAsync(Entity.Id);
+            var entity = await bookRepository.GetFromDatabaseAsync(Entity.Id);
 
             var currentStamp = await CurrentStampGrain.GetCurrentStampAsync();
 
@@ -74,7 +78,7 @@ public class BookGrain : Grain, IBookGrain
                 return true;
             }
 
-            await bookRepository.ForceUpdateAsync(entity, true);
+            await bookRepository.UpdateToDatabaseAsync(entity, true);
 
             await uow.CompleteAsync();
 

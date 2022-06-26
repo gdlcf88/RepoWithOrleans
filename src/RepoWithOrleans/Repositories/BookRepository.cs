@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using RepoWithOrleans.Data;
@@ -9,6 +11,7 @@ using RepoWithOrleans.Grains;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -31,7 +34,63 @@ public class BookRepository : EfCoreRepository<MyDbContext, Book, Guid>, IBookRe
         _abpDistributedLock = abpDistributedLock;
     }
 
-    public virtual async Task<Book> ForceUpdateAsync(Book entity, bool autoSave = false,
+    public override async Task<Book> GetAsync(Guid id, bool includeDetails = true,
+        CancellationToken cancellationToken = new())
+    {
+        var cachedEntity = await FindAsync(id, true, cancellationToken);
+
+        return cachedEntity ?? throw new EntityNotFoundException(typeof(Book));
+    }
+
+    public override async Task<Book> FindAsync(Guid id, bool includeDetails = true,
+        CancellationToken cancellationToken = new())
+    {
+        var grain = _grainFactory.GetGrain<IBookGrain>(id);
+
+        Book entity;
+        try
+        {
+            entity = await grain.GetEntityOrNullAsync();
+        }
+        catch (EntityIsChangingException)
+        {
+            // try again
+            _logger.LogInformation("Try again to get cached entity from the grain.");
+            entity = await grain.GetEntityOrNullAsync();
+            _logger.LogInformation("The second try succeeded.");
+        }
+
+        if (entity is not null && UnitOfWorkManager.Current is not null)
+        {
+            (await GetDbSetAsync()).Attach(entity);
+        }
+
+        return entity;
+    }
+
+    public async Task<Book> GetFromDatabaseAsync(Guid id, bool includeDetails = true,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await FindFromDatabaseAsync(id, includeDetails, GetCancellationToken(cancellationToken));
+
+        if (entity == null)
+        {
+            throw new EntityNotFoundException(typeof(Book), id);
+        }
+
+        return entity;
+    }
+
+    public async Task<Book> FindFromDatabaseAsync(Guid id, bool includeDetails = true,
+        CancellationToken cancellationToken = default)
+    {
+        return includeDetails
+            ? await (await WithDetailsAsync()).OrderBy(e => e.Id)
+                .FirstOrDefaultAsync(e => e.Id.Equals(id), GetCancellationToken(cancellationToken))
+            : await (await GetDbSetAsync()).FindAsync(new object[] { id }, GetCancellationToken(cancellationToken));
+    }
+
+    public virtual async Task<Book> UpdateToDatabaseAsync(Book entity, bool autoSave = false,
         CancellationToken cancellationToken = default)
     {
         var dbContext = await GetDbContextAsync();

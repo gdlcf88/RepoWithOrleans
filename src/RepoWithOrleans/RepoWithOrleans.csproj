@@ -39,4 +39,14 @@
       <Folder Include="Logs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Repositories\CachedEntity.cs" />
+      <Compile Remove="Repositories\ICachedBookProvider.cs" />
+      <Compile Remove="Repositories\OrleansGrainCachedBookProvider.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Repositories\OrleansGrainCachedBookProvider.cs" />
+    </ItemGroup>
+
 </Project>

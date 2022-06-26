@@ -8,5 +8,10 @@ namespace RepoWithOrleans.Repositories;
 
 public interface IBookRepository : IRepository<Book, Guid>
 {
-    Task<Book> ForceUpdateAsync(Book entity, bool autoSave = false, CancellationToken cancellationToken = default);
+    Task<Book> GetFromDatabaseAsync(Guid id, bool includeDetails = true, CancellationToken cancellationToken = default);
+
+    Task<Book> FindFromDatabaseAsync(Guid id, bool includeDetails = true,
+        CancellationToken cancellationToken = default);
+
+    Task<Book> UpdateToDatabaseAsync(Book entity, bool autoSave = false, CancellationToken cancellationToken = default);
 }
