@@ -2,22 +2,23 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orleans;
-using RepoWithOrleans.Entities;
 using RepoWithOrleans.Repositories;
 using Volo.Abp;
 using Volo.Abp.Data;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Uow;
 
 namespace RepoWithOrleans.Grains;
 
-public class BookGrain : Grain, IBookGrain
+public abstract class EntityGrainBase<TRepository, TEntity, TKey> : Grain, IEntityGrain<TRepository, TEntity, TKey>
+    where TRepository : ICachedEntityRepository<TEntity, TKey> where TEntity : AggregateRoot<TKey>
 {
-    private readonly ILogger<BookGrain> _logger;
+    private readonly ILogger<EntityGrainBase<TRepository, TEntity, TKey>> _logger;
     private IEntityCurrentStampGrain CurrentStampGrain { get; set; }
 
-    protected Book Entity { get; set; }
+    protected TEntity Entity { get; set; }
 
-    public BookGrain(ILogger<BookGrain> logger)
+    public EntityGrainBase(ILogger<EntityGrainBase<TRepository, TEntity, TKey>> logger)
     {
         _logger = logger;
     }
@@ -26,25 +27,28 @@ public class BookGrain : Grain, IBookGrain
     {
         var grainFactory = ServiceProvider.GetRequiredService<IGrainFactory>();
 
-        CurrentStampGrain = grainFactory.GetGrain<IEntityCurrentStampGrain>($"Book:{this.GetPrimaryKey()}");
+        CurrentStampGrain =
+            grainFactory.GetGrain<IEntityCurrentStampGrain>($"{typeof(TEntity).FullName}:{this.GetId()}");
 
         await ReadStateAsync();
     }
 
-    protected async Task ReadStateAsync()
+    protected virtual async Task ReadStateAsync()
     {
         using var scope = ServiceProvider.CreateScope();
 
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
-        
-        var bookRepository = scope.ServiceProvider.GetRequiredService<IBookRepository>();
 
-        Entity = await bookRepository.FindFromDatabaseAsync(this.GetPrimaryKey());
+        var repository = scope.ServiceProvider.GetRequiredService<ICachedEntityRepository<TEntity, TKey>>();
+
+        Entity = await repository.FindFromStorageAsync(this.GetId());
     }
 
-    public async Task<Book> GetEntityOrNullAsync()
+    protected abstract TKey GetId();
+
+    public async Task<TEntity> GetEntityOrNullAsync()
     {
         var currentStamp = await CurrentStampGrain.GetCurrentStampAsync();
 
@@ -56,19 +60,19 @@ public class BookGrain : Grain, IBookGrain
         return Entity;
     }
 
-    protected async Task<bool> TryEmptyUpdateAsync()
+    protected virtual async Task<bool> TryEmptyUpdateAsync()
     {
         using var scope = ServiceProvider.CreateScope();
 
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-        
+
         try
         {
             using var uow = uowManager.Begin(requiresNew: true, isTransactional: false);
 
-            var bookRepository = scope.ServiceProvider.GetRequiredService<IBookRepository>();
+            var repository = scope.ServiceProvider.GetRequiredService<ICachedEntityRepository<TEntity, TKey>>();
 
-            var entity = await bookRepository.GetFromDatabaseAsync(Entity.Id);
+            var entity = await repository.GetFromStorageAsync(Entity.Id);
 
             var currentStamp = await CurrentStampGrain.GetCurrentStampAsync();
 
@@ -78,7 +82,7 @@ public class BookGrain : Grain, IBookGrain
                 return true;
             }
 
-            await bookRepository.UpdateToDatabaseAsync(entity, true);
+            await repository.UpdateToStorageAsync(entity, true);
 
             await uow.CompleteAsync();
 
@@ -98,7 +102,7 @@ public class BookGrain : Grain, IBookGrain
         return true;
     }
 
-    public async Task StartUpdateAsync()
+    public virtual async Task StartUpdateAsync()
     {
         if (await CurrentStampGrain.GetCurrentStampAsync() is not null)
         {
@@ -109,7 +113,7 @@ public class BookGrain : Grain, IBookGrain
         await CurrentStampGrain.SetCurrentStampAsync(Entity?.ConcurrencyStamp ?? string.Empty);
     }
 
-    public async Task FinishUpdateAsync()
+    public virtual async Task FinishUpdateAsync()
     {
         if (await CurrentStampGrain.GetCurrentStampAsync() is null)
         {

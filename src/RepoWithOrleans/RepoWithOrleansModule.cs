@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -9,6 +10,7 @@ using RepoWithOrleans.Repositories;
 using Volo.Abp;
 using Volo.Abp.Autofac;
 using Volo.Abp.Data;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.SqlServer;
 using Volo.Abp.Modularity;
@@ -27,18 +29,15 @@ public class RepoWithOrleansModule : AbpModule
 
         context.Services.AddAbpDbContext<MyDbContext>(options =>
         {
-            options.AddRepository<Book, BookRepository>();
+            options.AddEfCoreCachedEntityRepository<Book, Guid, BookRepository>();
         });
-        
+
         Configure<AbpDbConnectionOptions>(options =>
         {
             options.ConnectionStrings.Default = configuration.GetConnectionString("Default");
         });
-        
-        Configure<AbpDbContextOptions>(options =>
-        {
-            options.UseSqlServer();
-        });
+
+        Configure<AbpDbContextOptions>(options => { options.UseSqlServer(); });
     }
 
     public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)

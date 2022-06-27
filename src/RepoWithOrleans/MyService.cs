@@ -42,8 +42,8 @@ public class MyService : ITransientDependency
             await uow.CompleteAsync();
         }
 
-        var book1 = await _bookRepository.GetFromDatabaseAsync(Consts.Book1Id);
-        Console.WriteLine($"Get Book1 from database, the sold is: {book1.Sold}");
+        var book1 = await _bookRepository.GetFromStorageAsync(Consts.Book1Id);
+        Console.WriteLine($"Get Book1 from storage, the sold is: {book1.Sold}");
         var book1Cache = await _bookRepository.GetAsync(Consts.Book1Id);
         Console.WriteLine($"Get Book1 from grain, the sold is: {book1Cache.Sold}");
 
@@ -58,8 +58,8 @@ public class MyService : ITransientDependency
             await uow.CompleteAsync();
         }
 
-        book1 = await _bookRepository.GetFromDatabaseAsync(Consts.Book1Id);
-        Console.WriteLine($"Get Book1 from database, the sold is: {book1.Sold}");
+        book1 = await _bookRepository.GetFromStorageAsync(Consts.Book1Id);
+        Console.WriteLine($"Get Book1 from storage, the sold is: {book1.Sold}");
         book1Cache = await _bookRepository.GetAsync(Consts.Book1Id);
         Console.WriteLine($"Get Book1 from grain, the sold is: {book1Cache.Sold}");
 
@@ -74,8 +74,8 @@ public class MyService : ITransientDependency
             await uow.CompleteAsync();
         }
 
-        book1 = await _bookRepository.GetFromDatabaseAsync(Consts.Book1Id);
-        Console.WriteLine($"Get Book1 from database, the sold is: {book1.Sold}");
+        book1 = await _bookRepository.GetFromStorageAsync(Consts.Book1Id);
+        Console.WriteLine($"Get Book1 from storage, the sold is: {book1.Sold}");
         book1Cache = await _bookRepository.GetAsync(Consts.Book1Id);
         Console.WriteLine($"Get Book1 from grain, the sold is: {book1Cache.Sold}");
 
@@ -135,8 +135,8 @@ public class MyService : ITransientDependency
             task.Wait();
         }
 
-        var book11 = await _bookRepository.GetFromDatabaseAsync(Consts.Book1Id);
-        Console.WriteLine($"!!!Got Book1 from database, the ConcurrencyStamp is: {book11.ConcurrencyStamp}");
+        var book11 = await _bookRepository.GetFromStorageAsync(Consts.Book1Id);
+        Console.WriteLine($"!!!Got Book1 from storage, the ConcurrencyStamp is: {book11.ConcurrencyStamp}");
         var book1Cache1 = await _bookRepository.GetAsync(Consts.Book1Id);
         Console.WriteLine($"!!!Got Book1 from grain, the ConcurrencyStamp is: {book1Cache1.ConcurrencyStamp}");
 
@@ -169,8 +169,8 @@ public class MyService : ITransientDependency
             task.Wait();
         }
         
-        book11 = await _bookRepository.GetFromDatabaseAsync(Consts.Book1Id);
-        Console.WriteLine($"!!!Got Book1 from database, the ConcurrencyStamp is: {book11.ConcurrencyStamp}");
+        book11 = await _bookRepository.GetFromStorageAsync(Consts.Book1Id);
+        Console.WriteLine($"!!!Got Book1 from storage, the ConcurrencyStamp is: {book11.ConcurrencyStamp}");
         book1Cache1 = await _bookRepository.GetAsync(Consts.Book1Id);
         Console.WriteLine($"!!!Got Book1 from grain, the ConcurrencyStamp is: {book1Cache1.ConcurrencyStamp}");
 
